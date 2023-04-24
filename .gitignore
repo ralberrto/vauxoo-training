@@ -17,3 +17,11 @@ pyproject.toml
 
 __pycache__/
 requirements-dev.txt
+
+# --
+# Odoo executable
+odoo
+enterprise
+odooaddons
+training
+logging.out
