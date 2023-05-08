@@ -1,9 +1,12 @@
-from odoo import api, exceptions, fields, models
+from odoo import api, fields, models
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools.float_utils import float_compare
 
 
 class EstateProperty(models.Model):
     _name = "estate.property"
     _description = "Estate Property"
+    _order = "id desc"
 
     name = fields.Char(required=True, string="Title")
     description = fields.Text()
@@ -48,6 +51,19 @@ class EstateProperty(models.Model):
     total_area = fields.Integer(compute="_compute_total_area", string="Total Area (sqm)")
     best_price = fields.Float(compute="_compute_best_price", string="Best Offer")
 
+    _sql_constraints = [
+        (
+            "check_expected_price_positive",
+            "CHECK (expected_price >= 0)",
+            "The expected price must be strictly positive.",
+        ),
+        (
+            "check_selling_price_positive",
+            "CHECK (selling_price >= 0)",
+            "The selling price must be strictly positive.",
+        ),
+    ]
+
     @api.depends("living_area", "garden_area")
     def _compute_total_area(self):
         for record in self:
@@ -71,16 +87,27 @@ class EstateProperty(models.Model):
             self.garden_area = 0
             self.garden_orientation = ""
 
+    @api.constrains("expected_price", "selling_price")
+    def _check_selling_and_expected_prices(self):
+        for record in self:
+            if (
+                float_compare(record.selling_price, record.expected_price * 0.90, precision_rounding=2) == -1
+            ) and record.selling_price != 0:
+                raise ValidationError(
+                    "The selling price must be at least 90% of the expected price!"
+                    "You must reduce the expected price if you want to accept this offer."
+                )
+
     def action_set_status_canceled(self):
         for record in self:
             if record.status == "sold":
-                raise exceptions.UserError("Sold properties cannot be canceled.")
+                raise UserError("Sold properties cannot be canceled.")
             record.status = "canceled"
         return True
 
     def action_set_status_sold(self):
         for record in self:
             if record.status == "canceled":
-                raise exceptions.UserError("Canceled properties cannot be sold.")
+                raise UserError("Canceled properties cannot be sold.")
             record.status = "sold"
         return True
