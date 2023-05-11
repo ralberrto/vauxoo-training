@@ -38,6 +38,11 @@ class EstatePropertyOffer(models.Model):
         for record in self:
             record.validity = (record.date_deadline - record.create_date.date()).days
 
+    @api.model
+    def create(self, vals):
+        self.env["estate.property"].browse(vals["property_id"]).status = "offer_received"
+        return super().create(vals)
+
     def action_set_status_accepted(self):
         for record in self:
             if "accepted" in record.property_id.offer_ids.mapped("status"):
