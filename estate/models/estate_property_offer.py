@@ -38,11 +38,20 @@ class EstatePropertyOffer(models.Model):
         for record in self:
             record.validity = (record.date_deadline - record.create_date.date()).days
 
+    @api.model
+    def create(self, vals):
+        existing_offers = self.env["estate.property"].browse(vals["property_id"]).offer_ids.mapped("price")
+        if any(map(lambda x: x >= vals["price"], existing_offers)):
+            raise UserError(f"The offer must be higher than {'{:,.2f}'.format(max(existing_offers))}")
+        self.env["estate.property"].browse(vals["property_id"]).status = "offer_received"
+        return super().create(vals)
+
     def action_set_status_accepted(self):
         for record in self:
             if "accepted" in record.property_id.offer_ids.mapped("status"):
                 raise UserError("Only one offer may be accepted.")
             record.status = "accepted"
+            record.property_id.status = "offer_accepted"
             record.property_id.buyer_id = record.partner_id
             record.property_id.selling_price = record.price
 
