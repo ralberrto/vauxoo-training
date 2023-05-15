@@ -48,6 +48,7 @@ class EstatePropertyOffer(models.Model):
             if "accepted" in record.property_id.offer_ids.mapped("status"):
                 raise UserError("Only one offer may be accepted.")
             record.status = "accepted"
+            record.property_id.status = "offer_accepted"
             record.property_id.buyer_id = record.partner_id
             record.property_id.selling_price = record.price
 
